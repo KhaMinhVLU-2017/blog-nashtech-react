@@ -1,26 +1,24 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React from 'react'
+import './App.css'
+import Layout from './components/layout'
+import { BrowserRouter as Router, Route,Redirect } from "react-router-dom"
+import Register from './components/register'
+import Login from './components/login'
+import Forbidden from './components/forbidden'
+import 'moment-timezone'
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className='container-fluid'>
+      <Router>
+        <Route exact path='/' render={props => props.match.path==='/' && <Redirect to='/home' />} />
+        <Route path='/home' render={(props) => <Layout {...props} />} />
+        <Route path='/register' component={Register}/>
+        <Route path='/login' component={Login} />
+        <Route path='/forbidden'  component={Forbidden}/>
+      </Router>
     </div>
-  );
+  )
 }
 
-export default App;
+export default App
