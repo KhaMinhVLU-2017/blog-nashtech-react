@@ -7,12 +7,14 @@ import { urlServer } from '../helper/config'
 import { connect } from 'react-redux'
 import { Redirect } from 'react-router-dom'
 import {deleteUser} from '../redux/action'
+// eslint-disable-next-line
+import LoadImg from '../images/loadsecond.gif'
 
 class CreatePost extends Component {
   constructor(props) {
     super(props)
     this.state = { content: '', imagePreviewUrl: '', file: '', title: '', 
-    sapo: '', redirect: false, errorMess: '', errorStatus: false,visible:false,redirectErro:false }
+    sapo: '', redirect: false, errorMess: '', errorStatus: false,visible:false,redirectErro:false, loading:false }
     this.handleChange = this.handleChange.bind(this)
     this.handleImage = this.handleImage.bind(this)
     this.submitCreate = this.submitCreate.bind(this)
@@ -48,6 +50,7 @@ class CreatePost extends Component {
   }
   submitCreate() {
     let self = this
+    this.setState({loading:true})
     let formdata = new FormData()
     formdata.set('Title', this.state.title)
     formdata.set('Sapo', this.state.sapo)

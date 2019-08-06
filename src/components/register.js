@@ -1,9 +1,10 @@
 import React, { Component } from 'react'
 import { Redirect } from 'react-router-dom'
-import { Form, FormGroup, Label, Input, Button,FormFeedback, Alert,Row, Col } from 'reactstrap';
+import { Form, FormGroup, Label, Input, Button, FormFeedback, Alert, Row, Col } from 'reactstrap';
 import axio from 'axios'
-import {setUser} from '../redux/action'
-import {connect} from 'react-redux'
+import { setUser } from '../redux/action'
+import { connect } from 'react-redux'
+import LoadImg from '../images/loadsecond.gif'
 
 class Register extends Component {
   constructor(props) {
@@ -22,47 +23,50 @@ class Register extends Component {
         , valid: false
         , invalid: false
       },
-      screenInvalid:false,
-      messageInvalid:'',
-      redirect:false
+      screenInvalid: false,
+      messageInvalid: '',
+      redirect: false,
+      loading: false
     }
     this.onHandlerChange = this.onHandlerChange.bind(this)
-    this.submitSever= this.submitSever.bind(this)
+    this.submitSever = this.submitSever.bind(this)
   }
-  submitSever(){
+  submitSever() {
     let Username = this.state.username.value
     let Fullname = this.state.fullname.value
     let Password = this.state.passsword.value
-
-    let  bodyFormData = new FormData();
-    bodyFormData.set('Username',Username)
-    bodyFormData.set('Fullname',Fullname)
-    bodyFormData.set('Password',Password)
+    this.setState({ loading: true })
+    let bodyFormData = new FormData();
+    bodyFormData.set('Username', Username)
+    bodyFormData.set('Fullname', Fullname)
+    bodyFormData.set('Password', Password)
 
     let self = this
     axio({
       url: '/Account/register',
       baseURL: 'http://localhost:54355/api/',
       method: 'post',
-      data:bodyFormData
+      data: bodyFormData,
+      timeout: 3000
     })
-    .then(res => {
-      console.log(res)
-      let {status,message} = res.data
-      if(status === 200) {
-          //Doing redirect
-          let { token, fullname } = res.data
-          localStorage.setItem('_Fullname', fullname)
-          localStorage.setItem('_Token', token)
-          self.props.setUser(fullname,token)
-          self.setState({ redirect: true })
-      } else {
-        self.setState({screenInvalid: true,messageInvalid:message})
-      }
-    })
-    .catch(err => {
-      console.log(err)
-    })
+      .then(res => {
+        setTimeout(() => {
+          let { status, message } = res.data
+          if (status === 200) {
+            //Doing redirect
+            let { token, fullname } = res.data
+            localStorage.setItem('_Fullname', fullname)
+            localStorage.setItem('_Token', token)
+            self.props.setUser(fullname, token)
+            self.setState({ redirect: true, loading: false })
+          } else {
+            self.setState({ screenInvalid: true, messageInvalid: message })
+          }
+        }, 1000)
+      })
+      .catch(err => {
+        self.setState({ screenInvalid: true, messageInvalid: 'Server Interval', loading: false })
+      })
   }
   onHandlerChange(e) {
     let { id, value } = e.target
@@ -92,47 +96,50 @@ class Register extends Component {
     let validUsername = this.state.username.valid
     let validFullname = this.state.fullname.valid
     let validPassword = this.state.passsword.valid
+    let { loading } = this.state
     if (this.state.redirect) {
       return (<Redirect to='/home' />)
     }
     return (
       <Row>
         <Col className='bg-register' md='6' sm='6' xs='12'></Col>
-        <Col md='6' sm='6' xs='12'>
-          <div className='register-form'>
-            <p className='register-title'>Register</p>
-            <Form>
-              <FormGroup>
-                <Label >Fullname</Label>
-                <Input invalid={this.state.fullname.invalid} valid={this.state.fullname.valid} id='fullname' value={this.state.fullname.value} onChange={this.onHandlerChange} />
-                <FormFeedback>Oh noes! that field not too 30 char</FormFeedback>
-              </FormGroup>
-            </Form>
-            <Form>
-              <FormGroup>
-                <Label >Username</Label>
-                <Input invalid={this.state.username.invalid} valid={this.state.username.valid} id='username' value={this.state.username.value} onChange={this.onHandlerChange} />
-                <FormFeedback>Oh noes! that field not too 30 char</FormFeedback>
-              </FormGroup>
-            </Form>
-            <Form>
-              <FormGroup>
-                <Label >Password</Label>
-                <Input type='password' invalid={this.state.passsword.invalid} valid={this.state.passsword.valid} id='passsword' value={this.state.passsword.value} onChange={this.onHandlerChange} />
-                <FormFeedback>Oh noes! that field not too 30 char</FormFeedback>
-              </FormGroup>
-            </Form>
-            {(this.state.screenInvalid && <Alert color='danger'>{this.state.messageInvalid}</Alert>)}
-            <p className='float-right'>
-              <Button outline color='danger' onClick={() => this.props.history.goBack()}>Cancel</Button>
-              &ensp;
-              {validUsername && validPassword && validFullname ? <Button onClick={this.submitSever} outline color='success'>Create</Button>: <Button outline color='success' disabled>Create</Button>}
-            </p>
-          </div>
-        </Col>
+        {loading ? <img className='col-md-6 col-lg-6 col-sm-12 col-xs-12' src={LoadImg} alt='LoadingIMG' /> :
+          <Col md='6' sm='6' xs='12'>
+            <div className='register-form'>
+              <p className='register-title'>Register</p>
+              <Form>
+                <FormGroup>
+                  <Label >Fullname</Label>
+                  <Input invalid={this.state.fullname.invalid} valid={this.state.fullname.valid} id='fullname' value={this.state.fullname.value} onChange={this.onHandlerChange} />
+                  <FormFeedback>Oh noes! that field not too 30 char</FormFeedback>
+                </FormGroup>
+              </Form>
+              <Form>
+                <FormGroup>
+                  <Label >Username</Label>
+                  <Input invalid={this.state.username.invalid} valid={this.state.username.valid} id='username' value={this.state.username.value} onChange={this.onHandlerChange} />
+                  <FormFeedback>Oh noes! that field not too 30 char</FormFeedback>
+                </FormGroup>
+              </Form>
+              <Form>
+                <FormGroup>
+                  <Label >Password</Label>
+                  <Input type='password' invalid={this.state.passsword.invalid} valid={this.state.passsword.valid} id='passsword' value={this.state.passsword.value} onChange={this.onHandlerChange} />
+                  <FormFeedback>Oh noes! that field not too 30 char</FormFeedback>
+                </FormGroup>
+              </Form>
+              {(this.state.screenInvalid && <Alert color='danger'>{this.state.messageInvalid}</Alert>)}
+              <p className='float-right'>
+                <Button outline color='danger' onClick={() => this.props.history.goBack()}>Cancel</Button>
+                &ensp;
+              {validUsername && validPassword && validFullname ? <Button onClick={this.submitSever} outline color='success'>Create</Button> : <Button outline color='success' disabled>Create</Button>}
+              </p>
+            </div>
+          </Col>
+        }
       </Row>
     )
   }
 }
 
-export default connect(null,{setUser})(Register)
+export default connect(null, { setUser })(Register)
