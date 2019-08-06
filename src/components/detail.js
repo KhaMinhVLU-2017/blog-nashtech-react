@@ -19,7 +19,9 @@ class Detail extends Component {
     this.connection = null
     this.state = {
       blog: { Comment: '' }, redirect: false, redirectFor: false, modalCM: false, commentObj: {}, hubConnection: null,
-      isLoadLis: true
+      isLoadLis: true,
+      isRTDelete:true, //status realtime delete
+      isRTEdit:true //status realtime Edit
     }
     this.onHandlChange = this.onHandlChange.bind(this)
     this.submitComment = this.submitComment.bind(this)
@@ -32,6 +34,8 @@ class Detail extends Component {
     this.deleteComment = this.deleteComment.bind(this) // Delete comment from server
     this.connectSignalR = this.connectSignalR.bind(this) // Connect signalR
     this.sendCommentAll = this.sendCommentAll.bind(this)
+    this.sendDeleteComment = this.sendDeleteComment.bind(this)// Realtime delete
+    this.sendEditComment = this.sendEditComment.bind(this) // Realtime Edit
   }
   // Event Comment FIlter and Pass to Modal
   eventEditComment(e) {
@@ -146,12 +150,40 @@ class Detail extends Component {
     this.connection.start()
       .then(() => console.info('Server Connected'))
       .catch(err => console.error('SignalR Connection Error: ', err))
-
+    // Listen Create Comment
     this.connection.on("ReceiveComment", (comment) => {
       if (this.state.isLoadLis) {
         let { blog } = self.state
         let { listComment } = blog // List Comment Get Server
         listComment.unshift(JSON.parse(comment))
+        //console.log('stateLoad', this.state.isLoadLis)
+        self.setState({ blog: { ...blog, listComment } })
+      }
+    })
+    // Listen Remove Comment
+    this.connection.on("ReceiveDelete", (commentID) => {
+      if (this.state.isRTDelete) {
+        let { blog } = self.state
+        let { listComment } = blog // List Comment Get Server
+        listComment = listComment.filter(s=>s.commentID !== commentID)
+        //console.log('stateLoad', this.state.isLoadLis)
+        self.setState({ blog: { ...blog, listComment } })
+      }
+    })
+    // Listen Edit Comment
+    this.connection.on("ReceiveEdit", (comment) => {
+      if (this.state.isRTEdit) {
+        let { blog } = self.state
+        let { listComment } = blog // List Comment Get Server
+
+        let commentJSON = JSON.parse(comment)
+
+        listComment = listComment.map(s=>{
+          if(s.commentID === commentJSON.commentID) {
+            s.content = commentJSON.content
+          }
+          return s
+        })
         //console.log('stateLoad', this.state.isLoadLis)
         self.setState({ blog: { ...blog, listComment } })
       }
@@ -166,6 +198,24 @@ class Detail extends Component {
       })
       .catch(err => console.error(err));
   };
+  sendDeleteComment(commentID){
+    let self = this
+    this.connection
+    .invoke('DeleteComment', commentID)
+    .then(() => {
+      self.setState({ isRTDelete: true })
+    })
+    .catch(err => console.error(err));
+  }
+  sendEditComment(comment){
+    let self = this
+    this.connection
+      .invoke('EditComment', comment)
+      .then(() => {
+        self.setState({ isRTEdit: true })
+      })
+      .catch(err => console.error(err));
+  }
   // Edit comment to Server
   // True: Delete
   // False Edit
@@ -196,6 +246,7 @@ class Detail extends Component {
         if (status === 200) {
           listComment = listComment.filter(s => s.commentID !== commentID)
           self.setState({ blog: { ...this.state.blog, listComment }, modalCM: false })
+          self.sendDeleteComment(commentID)
         } else if (status === 403) {
 
         } else if (status === 404) {
@@ -236,6 +287,7 @@ class Detail extends Component {
               return item
             })
             self.setState({ blog: { ...blog, listComment }, modalCM: false })
+            self.sendEditComment(comment)
           } else if (status === 404) {
 
           } else if (status === 403) {

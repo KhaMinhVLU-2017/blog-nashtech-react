@@ -5,6 +5,8 @@ import ImgContent from '../images/content.jpg'
 import axios from 'axios'
 import { urlServer, urlImgServer } from '../helper/config'
 import { Link, Redirect } from 'react-router-dom'
+import LazyLoad from 'react-lazyload'
+import loadIMG from '../images/loadfourth.gif'
 
 class Homepage extends Component {
   constructor(props) {
@@ -20,23 +22,23 @@ class Homepage extends Component {
     })
       .then(res => {
         let { listBlog, status } = res.data
-        if(status===200){
+        if (status === 200) {
           self.setState({ listBlog })
         }
-        else if(status ===403) {
+        else if (status === 403) {
           self.props.deleteUser()
-          self.setState({redirect:true})
+          self.setState({ redirect: true })
         } else {
           self.props.deleteUser()
-          self.setState({redirect:true})
-        }     
+          self.setState({ redirect: true })
+        }
       })
       .catch(err => {
         console.log(err)
       })
   }
   render() {
-    if(this.state.redirect) {
+    if (this.state.redirect) {
       return <Redirect to='/Login' />
     }
     return (
@@ -45,18 +47,20 @@ class Homepage extends Component {
         <Col className='article' xs='12' md='12' sm='12'>
           {this.state.listBlog !== [] && this.state.listBlog.map(item =>
             <Link className='content-a' to={`/home/detail/${item.blogID}`} key={item.blogID}>
-              <Row className='content-row'>
-                <Col className='content' xs='12' sm='6' md='6'>
-                  <p className='content-title'>{item.title}</p>
-                  <p className='content-sapo'><em>{item.authorName}</em>&ensp;{item.crDate}</p>
-                  <p className='content-body'>{item.sapo}
-                  </p>
-                  <p className='content-footer'>&reg; Social Blog</p>
-                </Col>
-                <Col className='pad-0' xs='12' sm='6' md='6'>
-                  <img className='img-resize' src={`${urlImgServer}/${item.picture}`} alt='Images' />
-                </Col>
-              </Row>
+              <LazyLoad placeholder={<Col xs='12' md='12' sm='12' style={{textAlign:'center'}}><img style={{width:'200'}} src={loadIMG} alt='Loading tone'/></Col>} debounce={500}>
+                <Row className='content-row'>
+                  <Col className='content' xs='12' sm='6' md='6'>
+                    <p className='content-title'>{item.title}</p>
+                    <p className='content-sapo'><em>{item.authorName}</em>&ensp;{item.crDate}</p>
+                    <p className='content-body'>{item.sapo}
+                    </p>
+                    <p className='content-footer'>&reg; Social Blog</p>
+                  </Col>
+                  <Col className='pad-0' xs='12' sm='6' md='6'>
+                    <img className='img-resize' src={`${urlImgServer}/${item.picture}`} alt='Images' />
+                  </Col>
+                </Row>
+              </LazyLoad>
             </Link>
           )}
           <Row className='content-row'>
