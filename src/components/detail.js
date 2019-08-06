@@ -1,7 +1,7 @@
 import React, { Component } from 'react'
 import Titlesector from './titlesector'
 import { Col, FormGroup, Label, Input, Button, Alert } from 'reactstrap'
-import { urlServer, urlImgServer } from '../helper/config'
+import { urlServer, urlImgServer, hostServer } from '../helper/config'
 import axios from 'axios'
 import ReactMarkdown from 'react-markdown/with-html'
 import { Redirect, Link } from 'react-router-dom'
@@ -9,12 +9,18 @@ import { connect } from 'react-redux'
 import { deleteUser } from '../redux/action'
 import Moment from 'react-moment'
 import ModalComment from './modalComment'
+import * as signalR from '@aspnet/signalr'
+import logger from 'logger'
 
 class Detail extends Component {
   // eslint-disable-next-line
   constructor(props) {
     super(props)
-    this.state = { blog: { Comment: '' }, redirect: false, redirectFor: false, modalCM: false, commentObj: {} }
+    this.connection = null
+    this.state = {
+      blog: { Comment: '' }, redirect: false, redirectFor: false, modalCM: false, commentObj: {}, hubConnection: null,
+      isLoadLis: true
+    }
     this.onHandlChange = this.onHandlChange.bind(this)
     this.submitComment = this.submitComment.bind(this)
     this.EventKeyUp = this.EventKeyUp.bind(this)
@@ -24,6 +30,8 @@ class Detail extends Component {
     this.handleEditCommentClient = this.handleEditCommentClient.bind(this) //Handle Comment From Client
     this.cancelModal = this.cancelModal.bind(this) // Hidden Modal
     this.deleteComment = this.deleteComment.bind(this) // Delete comment from server
+    this.connectSignalR = this.connectSignalR.bind(this) // Connect signalR
+    this.sendCommentAll = this.sendCommentAll.bind(this)
   }
   // Event Comment FIlter and Pass to Modal
   eventEditComment(e) {
@@ -66,10 +74,11 @@ class Detail extends Component {
           let LCom = this.state.blog.listComment // List Comment Get Server
           LCom.unshift(comment)
           if (check) {
-            self.setState({ blog: { ...this.state.blog, listComment: LCom, Comment: '' } })
+            self.setState({ blog: { ...this.state.blog, listComment: LCom, Comment: '' }, isLoadLis: false })
           } else {
-            self.setState({ blog: { ...this.state.blog, listComment: LCom } })
+            self.setState({ blog: { ...this.state.blog, listComment: LCom }, isLoadLis: false })
           }
+          self.sendCommentAll(comment)
         } else if (status === 403) {
           self.setState({ redirectFor: true })
         } else {
@@ -80,11 +89,16 @@ class Detail extends Component {
         console.log(err)
       })
   }
+  componentWillMount() {
+    this.connectSignalR()
+  }
+
   componentDidMount() {
     // eslint-disable-next-line
     let { id } = this.props.match.params//get ID params
     let { token } = this.props
     let self = this
+    //
     axios.defaults.headers.common['Authorization'] = token;
     axios({
       url: '/blog/get',
@@ -109,6 +123,49 @@ class Detail extends Component {
         console.log(err)
       })
   }
+  // Connect SignalR
+  connectSignalR() {
+    let self = this
+    const url = `${hostServer}/hubCentral`
+    const protocol = new signalR.JsonHubProtocol()
+
+    const transport = signalR.HttpTransportType.WebSockets;
+
+    const options = {
+      transport,
+      logMessageContent: true,
+      logger: logger,
+      accessTokenFactory: () => this.props.accessToken,
+    }
+
+    // create the connection instance
+    this.connection = new signalR.HubConnectionBuilder()
+      .withUrl(url, options)
+      .withHubProtocol(protocol)
+      .build()
+    this.connection.start()
+      .then(() => console.info('Server Connected'))
+      .catch(err => console.error('SignalR Connection Error: ', err))
+
+    this.connection.on("ReceiveComment", (comment) => {
+      if (this.state.isLoadLis) {
+        let { blog } = self.state
+        let { listComment } = blog // List Comment Get Server
+        listComment.unshift(JSON.parse(comment))
+        //console.log('stateLoad', this.state.isLoadLis)
+        self.setState({ blog: { ...blog, listComment } })
+      }
+    })
+  }
+  sendCommentAll(comment) {
+    let self = this
+    this.connection
+      .invoke('SendComment', comment)
+      .then(() => {
+        self.setState({ isLoadLis: true })
+      })
+      .catch(err => console.error(err));
+  };
   // Edit comment to Server
   // True: Delete
   // False Edit
@@ -138,7 +195,7 @@ class Detail extends Component {
         let { listComment } = self.state.blog
         if (status === 200) {
           listComment = listComment.filter(s => s.commentID !== commentID)
-          self.setState({blog:{...this.state.blog,listComment},modalCM:false})
+          self.setState({ blog: { ...this.state.blog, listComment }, modalCM: false })
         } else if (status === 403) {
 
         } else if (status === 404) {
@@ -238,9 +295,9 @@ class Detail extends Component {
               </FormGroup> : <Alert color='warning'>Please login for comment this blog</Alert>}
               <FormGroup className='blog-commented'>
                 {listComment !== undefined && listComment.map(item =>
-                  fullname === item.authorComment ? <p style={{ cursor: 'pointer' }} key={item.commentID} id={item.commentID} onClick={this.eventEditComment}><strong>{item.authorComment}:&ensp;</strong>{item.content}</p>
+                  fullname === item.authorComment ? <p style={{ cursor: 'pointer' }} key={item.commentID + 'meoN'} id={item.commentID} onClick={this.eventEditComment}><strong>{item.authorComment}:&ensp;</strong>{item.content}</p>
                     :
-                    <p key={item.commentID} id={item.commentID} ><strong>{item.authorComment}:&ensp;</strong>{item.content}</p>
+                    <p key={item.commentID + 'meoN'} id={item.commentID} ><strong>{item.authorComment}:&ensp;</strong>{item.content}</p>
                 )}
               </FormGroup>
               <ModalComment cancelToggle={this.cancelModal} childEditCM={this.editComment} modal={this.state.modalCM} comment={this.state.commentObj} />
